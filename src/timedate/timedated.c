@@ -278,20 +278,11 @@ static int context_read_data(Context *c) {
 
 static int context_write_data_timezone(Context *c) {
         _cleanup_free_ char *p = NULL;
+        const char *source;
 
         assert(c);
 
-        if (isempty(c->zone)) {
-                if (unlink("/etc/localtime") < 0 && errno != ENOENT)
-                        return -errno;
-                return 0;
-        }
-
-        p = path_join("/etc/zoneinfo", c->zone);
-        if (!p)
-                return log_oom();
-
-        return symlink_atomic(p, "/etc/localtime");
+        return symlink_atomic(source, "/etc/localtime");
 }
 
 static int context_write_data_local_rtc(Context *c) {
@@ -643,7 +634,7 @@ static int method_set_timezone(sd_bus_message *m, void *userdata, sd_bus_error *
                     "Changing timezone via systemd is not supported when it is set in NixOS configuration.");
 
         if (!timezone_is_valid(z, LOG_DEBUG))
-                return sd_bus_error_setf(error, SD_BUS_ERROR_INVALID_ARGS, "Invalid time zone '%s'", z);
+                return sd_bus_error_setf(error, SD_BUS_ERROR_INVALID_ARGS, "Invalid or not installed time zone '%s'", z);
 
         if (streq_ptr(z, c->zone))
                 return sd_bus_reply_method_return(m, NULL);
