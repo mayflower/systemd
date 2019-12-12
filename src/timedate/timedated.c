@@ -282,6 +282,30 @@ static int context_write_data_timezone(Context *c) {
 
         assert(c);
 
+        /* No timezone is very similar to UTC. Hence in either of these cases link the UTC file in. Except if
+         * it isn't installed, in which case we remove the symlink altogether. Since glibc defaults to an
+         * internal version of UTC in that case behaviour is mostly equivalent. We still prefer creating the
+         * symlink though, since things are more self explanatory then. */
+
+        if (isempty(c->zone) || streq(c->zone, "UTC")) {
+
+                if (access("/etc/zoneinfo/UTC", F_OK) < 0) {
+
+                        if (unlink("/etc/localtime") < 0 && errno != ENOENT)
+                                return -errno;
+
+                        return 0;
+                }
+
+                source = "zoneinfo/UTC";
+        } else {
+                p = path_join("zoneinfo", c->zone);
+                if (!p)
+                        return -ENOMEM;
+
+                source = p;
+        }
+
         return symlink_atomic(source, "/etc/localtime");
 }
 
